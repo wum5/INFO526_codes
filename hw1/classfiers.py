@@ -32,7 +32,7 @@ def knn_classifier(train,test,k=1,cross_val=False):
 	x_train, y_train = np.array(train.ix[:, :-1]), np.array(train['salary'])
 	x_test, y_test = np.array(test.ix[:, :-1]), np.array(test['salary']) 
 		
-	# here is 10-fold validation
+	# here I perform 10-fold cross validation
 	if cross_val == True:
 		myList = list(range(1,30))
 		neighbors = filter(lambda x: x%2!=0, myList)
@@ -54,7 +54,7 @@ def decision_tree(train,test,depth=1,cross_val=False):
 	x_train, y_train = np.array(train.ix[:, :-1]), np.array(train['salary'])
 	x_test, y_test = np.array(test.ix[:, :-1]), np.array(test['salary']) 
 	
-	## Perform 7-fold corss validation 
+	## here I perform 10-fold cross validation
 	if cross_val == True:
 		dt_cv_MSE = {}
 		for i in range(1,20):
