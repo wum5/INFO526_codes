@@ -9,6 +9,7 @@
 # or not a person makes more than $50K a year using census data.
 ##################################################################
 
+
 import pandas as pd
 import numpy as np
 import operator
@@ -127,24 +128,30 @@ def decision_tree(train,test):
 def main():
 	train = pd.read_csv('adult.data',header=None)
 	test = pd.read_csv('adult.test',header=None,skiprows=[0])
+	outfile = open("output.txt","w")
+	
 	print "raw training set: %s, raw test set: %s" % (train.shape,test.shape)
 
 	train_clean = pre_processing(train)
 	test_clean = pre_processing(test)
 	print "cleaned training set: %s, raw test set: %s" % (train_clean.shape,test_clean.shape)
 
+	outfile.write("Statistics\n")
+
 	nb_accuracy = naive_bayes(train_clean,test_clean)
-	print "Naive Bayes accuracy: %f" % (nb_accuracy)
+	outfile.write("Naive Bayes accuracy: %f\n" % (nb_accuracy))
 
 	knn_accuracy = knn_classifier(train_clean,test_clean)
-	print "KNN accuracy: %f" % (knn_accuracy)
+	outfile.write("KNN accuracy: %f\n" % (knn_accuracy))
 	
 	dct_accuracy = decision_tree(train_clean,test_clean)
-	print "Decision Tree accuracy: %f" % (dct_accuracy)
+	outfile.write("Decision Tree accuracy: %f\n" % (dct_accuracy))
 	
 	lgr_accuracy = logistic_regression(train_clean,test_clean)
-	print "Logistic Regression accuracy: %f" % (lgr_accuracy)
+	outfile.write("Logistic Regression accuracy: %f\n" % (lgr_accuracy))
 	
+	outfile.close()
+
 
 
 if __name__ == "__main__":

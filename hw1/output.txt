@@ -1,0 +1,5 @@
+Statistics
+Naive Bayes accuracy: 0.788579
+KNN accuracy: 0.794821
+Decision Tree accuracy: 0.849336
+Logistic Regression accuracy: 0.819323
