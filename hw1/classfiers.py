@@ -7,12 +7,16 @@
 # (http://archive.ics.uci.edu/ml/datasets/Adult). The prediction 
 # task associated with this data set is to predict whether  
 # or not a person makes more than $50K a year using census data.
+
+# Author: Meng Wu
+# Date: March 1, 2017
 ##################################################################
 
 
 import pandas as pd
 import numpy as np
 import operator
+import matplotlib.pyplot as plt
 from sklearn.cross_validation import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import cross_val_score
@@ -24,7 +28,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_selection import RFECV
-#import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
 
 
 
@@ -58,19 +62,24 @@ def split_x_y(df):
 	
 
 def logistic_regression(train,test):
-
 	x_train, y_train = split_x_y(train)
 	x_test, y_test = split_x_y(test)
 
-	# use 10-fold validation to find optimal number of features   
+	# use 10-fold validation to find optimal number of features 
+	# recursive feature elimination with cross-validation  
 	model = LogisticRegression()	
 	rfecv = RFECV(estimator=model, step=1, cv=10,
               scoring='accuracy')   
 	lgr = rfecv.fit(x_train,y_train)
 
+	preds_prob = lgr.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+
 	preds = lgr.predict(x_test)
-	return metrics.accuracy_score(y_test, preds)
-						
+	accuracy = metrics.accuracy_score(y_test, preds)
+	return accuracy, fpr, tpr, roc_auc						
+
 
 def naive_bayes(train,test):
 	x_train, y_train = split_x_y(train)
@@ -81,8 +90,13 @@ def naive_bayes(train,test):
 	gnb = GaussianNB()
 	gnb = gnb.fit(x_train, y_train)
 	
+	preds_prob = gnb.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+	
 	preds = gnb.predict(x_test)
-	return metrics.accuracy_score(y_test, preds)
+	accuracy = metrics.accuracy_score(y_test, preds)
+	return accuracy, fpr, tpr, roc_auc	
 
 
 def knn_classifier(train,test):
@@ -101,10 +115,16 @@ def knn_classifier(train,test):
 			best_model = [model,scores.mean()]
 		
 	knn = best_model[0]
-	preds = knn.predict(x_test)
 	
-	return metrics.accuracy_score(y_test, preds)
-
+	preds_prob = knn.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+	
+	preds = knn.predict(x_test)
+	accuracy = metrics.accuracy_score(y_test, preds)
+	
+	return accuracy, fpr, tpr, roc_auc	
+	
 
 def decision_tree(train,test):
 	x_train, y_train = split_x_y(train)
@@ -121,39 +141,60 @@ def decision_tree(train,test):
 			best_model = [model,scores.mean()]
 	
 	dct = best_model[0]
+	
+	preds_prob = dct.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+	
 	preds = dct.predict(x_test)
-	return metrics.accuracy_score(y_test, preds)
+	accuracy = metrics.accuracy_score(y_test, preds)
+	
+	return accuracy, fpr, tpr, roc_auc	
+
 
 
 def main():
+	
+	# import the data
 	train = pd.read_csv('adult.data',header=None)
 	test = pd.read_csv('adult.test',header=None,skiprows=[0])
-	outfile = open("output.txt","w")
 	
-	print "raw training set: %s, raw test set: %s" % (train.shape,test.shape)
-
+	# remove entries with missing values
 	train_clean = pre_processing(train)
 	test_clean = pre_processing(test)
+	print "raw training set: %s, raw test set: %s" % (train.shape,test.shape)
 	print "cleaned training set: %s, raw test set: %s" % (train_clean.shape,test_clean.shape)
 
-	outfile.write("Statistics\n")
+	# run the four classifiers
+	gnb_accuracy, gnb_fpr, gnb_tpr, gnb_roc = naive_bayes(train_clean,test_clean)
+	knn_accuracy, knn_fpr, knn_tpr, knn_roc  = knn_classifier(train_clean,test_clean)	
+	dct_accuracy, dct_fpr, dct_tpr, dct_roc  = decision_tree(train_clean,test_clean)	
+	lgr_accuracy, lgr_fpr, lgr_tpr, lgr_roc  = logistic_regression(train_clean,test_clean)
 
-	nb_accuracy = naive_bayes(train_clean,test_clean)
-	outfile.write("Naive Bayes accuracy: %f\n" % (nb_accuracy))
-
-	knn_accuracy = knn_classifier(train_clean,test_clean)
+	# Write the accuracy to output file
+	outfile = open("output.txt","w")
+	outfile.write("Statistics\n")	
+	outfile.write("Naive Bayes accuracy: %f\n" % (gnb_accuracy))
 	outfile.write("KNN accuracy: %f\n" % (knn_accuracy))
-	
-	dct_accuracy = decision_tree(train_clean,test_clean)
-	outfile.write("Decision Tree accuracy: %f\n" % (dct_accuracy))
-	
-	lgr_accuracy = logistic_regression(train_clean,test_clean)
+	outfile.write("Decision Tree accuracy: %f\n" % (dct_accuracy))	
 	outfile.write("Logistic Regression accuracy: %f\n" % (lgr_accuracy))
-	
-	outfile.close()
+	outfile.close()		
+
+	# Plot the ROC Curve
+	plt.title('Receiver Operating Characteristic')		
+	plt.plot(gnb_fpr, gnb_tpr, 'green', label='Naive Bayes (area=%0.2f)' % gnb_roc)
+	plt.plot(lgr_fpr, lgr_tpr, color='blue', label='Logistic Regression (area=%0.2f)' % lgr_roc)
+	plt.plot(dct_fpr, dct_tpr, 'red', label='Decision Tree (area=%0.2f)' % dct_roc)
+	plt.plot(knn_fpr, knn_tpr, color='yellow', label='KNN (area=%0.2f)' % knn_roc)
+	plt.legend(loc='lower right')
+	plt.plot([0,1],[0,1],color='grey',linestyle='--')
+	plt.xlim([0,1])
+	plt.ylim([0,1])	
+	plt.ylabel('True Positive Rate')
+	plt.xlabel('False Positive Rate')	
+	plt.savefig('ROC_Curve.pdf')
 
 
 
 if __name__ == "__main__":
 	main()
-
