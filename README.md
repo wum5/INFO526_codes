@@ -4,5 +4,5 @@
 ##### Homework 1 (binary classifiers)
 ```
 cd hw1
-python classifier.py
+python classifiers.py
 ```
