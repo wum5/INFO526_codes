@@ -29,7 +29,8 @@ from sklearn.feature_selection import RFE
 from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_selection import RFECV
 from sklearn.metrics import roc_curve, auc
-
+from sklearn.grid_search import GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
 
 
 def pre_processing(df):	
@@ -51,6 +52,7 @@ def pre_processing(df):
 		
 	cat_columns = df.select_dtypes(['category']).columns
 	df[cat_columns] = df[cat_columns].apply(lambda x: x.cat.codes)
+	
 	return df
 
 
@@ -66,12 +68,11 @@ def logistic_regression(train,test):
 	x_test, y_test = split_x_y(test)
 
 	# use 10-fold validation to find optimal number of features 
-	# recursive feature elimination with cross-validation  
+	# recursive feature elimination with cross-validation  	
 	model = LogisticRegression()	
-	rfecv = RFECV(estimator=model, step=1, cv=10,
-              scoring='accuracy')   
+	rfecv = RFECV(estimator=model, step=1, cv=10, scoring='accuracy')   
 	lgr = rfecv.fit(x_train,y_train)
-
+	
 	preds_prob = lgr.predict_proba(x_test)[:,1]
 	fpr, tpr, thres = roc_curve(y_test, preds_prob)
 	roc_auc = auc(fpr, tpr)
@@ -85,9 +86,8 @@ def naive_bayes(train,test):
 	x_train, y_train = split_x_y(train)
 	x_test, y_test = split_x_y(test)
 	
-	# prior feature selection might improve the performance
-	
-	gnb = GaussianNB()
+	# prior feature selection might improve the performance	
+	gnb = GridSearchCV(GaussianNB(),{})
 	gnb = gnb.fit(x_train, y_train)
 	
 	preds_prob = gnb.predict_proba(x_test)[:,1]
@@ -103,24 +103,27 @@ def knn_classifier(train,test):
 	x_train, y_train = split_x_y(train)
 	x_test, y_test = split_x_y(test)
 	
+	# scale continuous features between 0 and 1
+	x_train_minmax, x_test_minmax = scale_continuous(x_train,x_test)
+                
 	best_model = [None,0]  # [model,score] 
 			
 	# here I perform 10-fold cross validation
 	neighbors = list(range(1,20))
 	for k in neighbors:
 		knn = KNeighborsClassifier(n_neighbors=k)
-		scores = cross_val_score(knn, x_train, y_train, cv=10, scoring='accuracy')
+		scores = cross_val_score(knn, x_train_minmax, y_train, cv=10, scoring='accuracy')
 		if scores.mean() > best_model[1]:
-			model = knn.fit(x_train,y_train)
+			model = knn.fit(x_train_minmax,y_train)
 			best_model = [model,scores.mean()]
 		
 	knn = best_model[0]
 	
-	preds_prob = knn.predict_proba(x_test)[:,1]
+	preds_prob = knn.predict_proba(x_test_minmax)[:,1]
 	fpr, tpr, thres = roc_curve(y_test, preds_prob)
 	roc_auc = auc(fpr, tpr)
 	
-	preds = knn.predict(x_test)
+	preds = knn.predict(x_test_minmax)
 	accuracy = metrics.accuracy_score(y_test, preds)
 	
 	return accuracy, fpr, tpr, roc_auc	
@@ -152,7 +155,25 @@ def decision_tree(train,test):
 	return accuracy, fpr, tpr, roc_auc	
 
 
+def histogram(df):
+	x_train, y_train = split_x_y(df)
+	continue_features = x_train.dtypes[(x_train.dtypes=="float64")|(x_train.dtypes=="int64")]
+	
+	x_train[continue_features.index.values].hist(figsize=[11,11])
+	plt.savefig('Hist_continuous_features.pdf')
+	plt.clf() 
+	
+	
+def scale_continuous(x_train,x_test):
+	min_max=MinMaxScaler()
+	x_train_minmax=min_max.fit_transform(x_train[['age', 'capital-gain',
+                'capital-loss', 'hours-per-week', 'fnlwgt','education-num']])
+	x_test_minmax=min_max.fit_transform(x_test[['age', 'capital-gain',
+                'capital-loss', 'hours-per-week', 'fnlwgt','education-num']])
+	return x_train_minmax, x_test_minmax
 
+	
+	
 def main():
 	
 	# import the data
@@ -165,6 +186,9 @@ def main():
 	print "raw training set: %s, raw test set: %s" % (train.shape,test.shape)
 	print "cleaned training set: %s, raw test set: %s" % (train_clean.shape,test_clean.shape)
 
+	# make histogram plot on the continuous features
+	histogram(train_clean)
+	
 	# run the four classifiers
 	gnb_accuracy, gnb_fpr, gnb_tpr, gnb_roc = naive_bayes(train_clean,test_clean)
 	knn_accuracy, knn_fpr, knn_tpr, knn_roc  = knn_classifier(train_clean,test_clean)	
