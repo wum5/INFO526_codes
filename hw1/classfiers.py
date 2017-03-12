@@ -9,26 +9,21 @@
 # or not a person makes more than $50K a year using census data.
 
 # Author: Meng Wu
-# Date: March 1, 2017
+# Date: March 11, 2017
 ##################################################################
 
 
 import pandas as pd
 import numpy as np
-import operator
 import matplotlib.pyplot as plt
 from sklearn.cross_validation import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import cross_val_predict
-from sklearn import metrics
-from sklearn import tree
+from sklearn.model_selection import cross_val_score, cross_val_predict, StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import RFE
-from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_selection import RFECV
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import MinMaxScaler
 
@@ -78,7 +73,7 @@ def logistic_regression(train,test):
 	roc_auc = auc(fpr, tpr)
 
 	preds = lgr.predict(x_test)
-	accuracy = metrics.accuracy_score(y_test, preds)
+	accuracy = accuracy_score(y_test, preds)
 	return accuracy, fpr, tpr, roc_auc						
 
 
@@ -95,7 +90,7 @@ def naive_bayes(train,test):
 	roc_auc = auc(fpr, tpr)
 	
 	preds = gnb.predict(x_test)
-	accuracy = metrics.accuracy_score(y_test, preds)
+	accuracy = accuracy_score(y_test, preds)
 	return accuracy, fpr, tpr, roc_auc	
 
 
@@ -124,7 +119,7 @@ def knn_classifier(train,test):
 	roc_auc = auc(fpr, tpr)
 	
 	preds = knn.predict(x_test_minmax)
-	accuracy = metrics.accuracy_score(y_test, preds)
+	accuracy = accuracy_score(y_test, preds)
 	
 	return accuracy, fpr, tpr, roc_auc	
 	
@@ -137,7 +132,7 @@ def decision_tree(train,test):
 	
 	## here I perform 10-fold cross validation
 	for i in [1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7,8,8,8,9,9,9]:   # test decision tree depth
-		dct = tree.DecisionTreeClassifier(max_depth=i)
+		dct = DecisionTreeClassifier(max_depth=i)
 		scores = cross_val_score(dct, X=x_train, y=y_train, cv=10)
 		if scores.mean() > best_model[1]:
 			model = dct.fit(x_train,y_train)
@@ -150,7 +145,7 @@ def decision_tree(train,test):
 	roc_auc = auc(fpr, tpr)
 	
 	preds = dct.predict(x_test)
-	accuracy = metrics.accuracy_score(y_test, preds)
+	accuracy = accuracy_score(y_test, preds)
 	
 	return accuracy, fpr, tpr, roc_auc	
 
