@@ -2,14 +2,15 @@
 
 #################################################################
 # In this programming assignment, I compared the performance 
-# of Logistic Regression, Naive Bayes, Decision Tree, and Nearest 
-# Neighbor on the Adult data set from the UCI repository 
+# of Logistic Regression, Naive Bayes, Decision Tree, Nearest 
+# Neighbor, Support Vector Machine, Random Forest, and AbaBoost 
+# Algorithm on the Adult data set from the UCI repository 
 # (http://archive.ics.uci.edu/ml/datasets/Adult). The prediction 
 # task associated with this data set is to predict whether  
 # or not a person makes more than $50K a year using census data.
 
 # Author: Meng Wu
-# Date: March 11, 2017
+# Date: April 8, 2017
 ##################################################################
 
 
@@ -26,6 +27,8 @@ from sklearn.feature_selection import RFECV
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 
 
 def pre_processing(df):	
@@ -74,6 +77,7 @@ def logistic_regression(train,test):
 
 	preds = lgr.predict(x_test)
 	accuracy = accuracy_score(y_test, preds)
+	
 	return accuracy, fpr, tpr, roc_auc						
 
 
@@ -91,6 +95,7 @@ def naive_bayes(train,test):
 	
 	preds = gnb.predict(x_test)
 	accuracy = accuracy_score(y_test, preds)
+	
 	return accuracy, fpr, tpr, roc_auc	
 
 
@@ -150,6 +155,70 @@ def decision_tree(train,test):
 	return accuracy, fpr, tpr, roc_auc	
 
 
+def support_vector(train,test):
+	x_train, y_train = split_x_y(train)
+	x_test, y_test = split_x_y(test)
+			
+	# create a classifier object with the classifier and parameter candidates
+	#parameters = {'kernel':['linear', 'poly', 'rbf'], 'C':[0.1, 1, 10]}
+	parameters = {'C':[0.1, 1, 10]}
+	# exhaustive search over specified parameter values 
+	clf = GridSearchCV(estimator=SVC(probability=True), param_grid=parameters)
+	
+	svm = clf.fit(x_train,y_train)  
+	
+	preds_prob = svm.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+
+	preds = svm.predict(x_test)
+	accuracy = accuracy_score(y_test, preds)
+	
+	return accuracy, fpr, tpr, roc_auc	
+
+
+def random_forest(train,test):
+	x_train, y_train = split_x_y(train)
+	x_test, y_test = split_x_y(test)
+		
+	# create a classifier object with the classifier and parameter candidates
+	parameters = {'max_features':('sqrt', 'log2'), 'n_estimators':[10, 100]}
+	# exhaustive search over specified parameter values using 10-fold cross-validation
+	clf = GridSearchCV(estimator=RandomForestClassifier(), param_grid=parameters, cv=10)
+
+	rdf = clf.fit(x_train,y_train)  
+	
+	preds_prob = rdf.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+
+	preds = rdf.predict(x_test)
+	accuracy = accuracy_score(y_test, preds)
+	
+	return accuracy, fpr, tpr, roc_auc		
+
+
+def ada_boost(train,test):
+	x_train, y_train = split_x_y(train)
+	x_test, y_test = split_x_y(test)
+		
+	# create a classifier object with the classifier and parameter candidates
+	parameters = {'learning_rate':[1,2], 'n_estimators':[10, 100]}
+	# exhaustive search over specified parameter values using 10-fold cross-validation
+	clf = GridSearchCV(estimator=AdaBoostClassifier(), param_grid=parameters, cv=10)
+
+	ada = clf.fit(x_train,y_train)  
+	
+	preds_prob = ada.predict_proba(x_test)[:,1]
+	fpr, tpr, thres = roc_curve(y_test, preds_prob)
+	roc_auc = auc(fpr, tpr)
+
+	preds = ada.predict(x_test)
+	accuracy = accuracy_score(y_test, preds)
+	
+	return accuracy, fpr, tpr, roc_auc	
+	
+
 def histogram(df):
 	x_train, y_train = split_x_y(df)
 	continue_features = x_train.dtypes[(x_train.dtypes=="float64")|(x_train.dtypes=="int64")]
@@ -165,6 +234,7 @@ def scale_continuous(x_train,x_test):
                 'capital-loss', 'hours-per-week', 'fnlwgt','education-num']])
 	x_test_minmax=min_max.fit_transform(x_test[['age', 'capital-gain',
                 'capital-loss', 'hours-per-week', 'fnlwgt','education-num']])
+                
 	return x_train_minmax, x_test_minmax
 
 	
@@ -189,22 +259,31 @@ def main():
 	knn_accuracy, knn_fpr, knn_tpr, knn_roc  = knn_classifier(train_clean,test_clean)	
 	dct_accuracy, dct_fpr, dct_tpr, dct_roc  = decision_tree(train_clean,test_clean)	
 	lgr_accuracy, lgr_fpr, lgr_tpr, lgr_roc  = logistic_regression(train_clean,test_clean)
-
-	# Write the accuracy to output file
+	svm_accuracy, svm_fpr, svm_tpr, svm_roc  = support_vector(train_clean,test_clean)
+	rdf_accuracy, rdf_fpr, rdf_tpr, rdf_roc  = random_forest(train_clean,test_clean)
+	ada_accuracy, ada_fpr, ada_tpr, ada_roc  = ada_boost(train_clean,test_clean)
+	
+	# write the accuracy to output file
 	outfile = open("output.txt","w")
 	outfile.write("Statistics\n")	
 	outfile.write("Naive Bayes accuracy: %f\n" % (gnb_accuracy))
 	outfile.write("KNN accuracy: %f\n" % (knn_accuracy))
 	outfile.write("Decision Tree accuracy: %f\n" % (dct_accuracy))	
 	outfile.write("Logistic Regression accuracy: %f\n" % (lgr_accuracy))
+	outfile.write("Support Vector Machine accuracy: %f\n" % (svm_accuracy))
+	outfile.write("Random Forest accuracy: %f\n" % (rdf_accuracy))
+	outfile.write("AdaBoost accuracy: %f\n" % (ada_accuracy))
 	outfile.close()		
 
-	# Plot the ROC Curve
+	# plot the ROC Curve
 	plt.title('Receiver Operating Characteristic')		
 	plt.plot(gnb_fpr, gnb_tpr, 'green', label='Naive Bayes (area=%0.2f)' % gnb_roc)
 	plt.plot(lgr_fpr, lgr_tpr, color='blue', label='Logistic Regression (area=%0.2f)' % lgr_roc)
 	plt.plot(dct_fpr, dct_tpr, 'red', label='Decision Tree (area=%0.2f)' % dct_roc)
 	plt.plot(knn_fpr, knn_tpr, color='yellow', label='KNN (area=%0.2f)' % knn_roc)
+	plt.plot(svm_fpr, svm_tpr, color='brown', label='SVM (area=%0.2f)' % svm_roc)
+	plt.plot(rdf_fpr, rdf_tpr, color='purple', label='Rabdom Forest (area=%0.2f)' % rdf_roc)
+	plt.plot(ada_fpr, ada_tpr, color='orange', label='AdaBoost (area=%0.2f)' % ada_roc)
 	plt.legend(loc='lower right')
 	plt.plot([0,1],[0,1],color='grey',linestyle='--')
 	plt.xlim([0,1])
@@ -217,3 +296,4 @@ def main():
 
 if __name__ == "__main__":
 	main()
+

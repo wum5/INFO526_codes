@@ -1,5 +1,8 @@
 Statistics
 Naive Bayes accuracy: 0.788579
 KNN accuracy: 0.806109
-Decision Tree accuracy: 0.849137
-Logistic Regression accuracy: 0.818194
+Decision Tree accuracy: 0.849203
+Logistic Regression accuracy: 0.819655
+Support Vector Machine accuracy: 0.754316
+Random Forest accuracy: 0.849734
+AdaBoost accuracy: 0.859429
