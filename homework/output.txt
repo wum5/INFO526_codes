@@ -1,0 +1,8 @@
+Statistics
+Naive Bayes accuracy: 0.788579
+KNN accuracy: 0.806109
+Decision Tree accuracy: 0.849336
+Logistic Regression accuracy: 0.821182
+Support Vector Machine accuracy: 0.747012
+Random Forest accuracy: 0.850465
+AdaBoost accuracy: 0.859429
