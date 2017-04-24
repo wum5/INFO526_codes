@@ -1,8 +1,8 @@
 # INFO526_codes
 ### Python scripts used in class "Applied Machine Learning"           
 
-##### Homework 1 (binary classifiers)
+##### Homework (binary classifiers)
 ```
-cd hw1
+cd homework
 python classfiers.py
 ```
